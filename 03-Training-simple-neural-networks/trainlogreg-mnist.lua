@@ -22,7 +22,7 @@ for epoch=1,200 do
       local output = model:forward(input)
       sumloss = sumloss + criterion:forward(output, target)
       count = i
-      
+
       local gradOutput = criterion:backward(output, target)
       model:zeroGradParameters()
       model:backward(input, gradOutput)
@@ -49,5 +49,4 @@ assert(count == 50000)
 print(cm)
 print("Avg NLL:"..sumloss/count)
 
-model:clearState()
 torch.save("logreg-mnist.t7", model)
