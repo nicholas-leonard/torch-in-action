@@ -1,12 +1,12 @@
 --[[
-We will use the MNIST data loader created in chapter 2. 
-Listing 4.1 will extend listing 3.2 to use multiple layers. 
-Everything else will be the same. 
-It will be explained how the model capacity is increased to allow for 
-non-linear discrimination and demonstrate this via better performance. 
-We will include a diagram of the an MLP showing the usual connectionist view of a NN. 
-Listing 4.1 will also move out the hyper-parameters to the command-line and introduce these. 
-We will have a diagram plotting the training set learning curves of the logistic regression model side by side with the MLP. 
+We will use the MNIST data loader created in chapter 2.
+Listing 4.1 will extend listing 3.2 to use multiple layers.
+Everything else will be the same.
+It will be explained how the model capacity is increased to allow for
+non-linear discrimination and demonstrate this via better performance.
+We will include a diagram of the an MLP showing the usual connectionist view of a NN.
+Listing 4.1 will also move out the hyper-parameters to the command-line and introduce these.
+We will have a diagram plotting the training set learning curves of the logistic regression model side by side with the MLP.
 
 Changes:
 -- everything is local
@@ -23,7 +23,7 @@ require "optim"
 require "dpnn" -- needed for nn.Convert
 
 -- options : hyper-parameters and such
-local cmd = torch.CmdLine() 
+local cmd = torch.CmdLine()
 cmd:text()
 cmd:text('Training a multi-layer perceptron on MNIST')
 cmd:text('Options:')
@@ -62,14 +62,14 @@ model:add(nn.LogSoftMax())
 local criterion = nn.ClassNLLCriterion()
 
 -- optimize model using SGD
-print("Epoch; Average Loss")
+print("Epoch, Average Loss")
 for epoch=1,opt.maxepoch do
    local sumloss, count = 0, 0
    for i, input, target in trainset:sampleiter(opt.batchsize, opt.epochsize) do
       local output = model:forward(input)
       sumloss = sumloss + criterion:forward(output, target)
       count = i
-      
+
       local gradOutput = criterion:backward(output, target)
       model:zeroGradParameters()
       model:backward(input, gradOutput)
@@ -77,7 +77,7 @@ for epoch=1,opt.maxepoch do
       model:updateParameters(opt.lr)
    end
    local avgloss = sumloss/count
-   print(string.format("%d; %f", epoch, avgloss))
+   print(string.format("%d, %f", epoch, avgloss))
    if avgloss < opt.minloss then
       break
    end

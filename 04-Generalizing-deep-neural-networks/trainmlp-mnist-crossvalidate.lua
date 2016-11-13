@@ -14,7 +14,6 @@ cmd:option('-epochsize', -1, 'number of samples per epoch')
 cmd:option('-hiddensize', '{200,200}', 'number of hidden units')
 cmd:option('-transfer', 'ReLU', 'non-linear transfer function')
 cmd:option('-maxepoch', 200, 'stop after this many epochs')
-cmd:option('-earlystop', 20, 'max #epochs to find a better minima for early-stopping')
 local opt = cmd:parse(arg or {})
 
 -- process cmd-line options
@@ -42,10 +41,9 @@ model:add(nn.LogSoftMax())
 
 local criterion = nn.ClassNLLCriterion()
 
--- confusion matrix used for cross-valiation
+-- confusion matrix used for training and cross-valiation
 local validcm = optim.ConfusionMatrix(10)
 local traincm = optim.ConfusionMatrix(10)
-local ntrial, minvaliderr = 0, 1
 
 -- optimize model using SGD
 print("Epoch, Train error, Valid error")
@@ -53,16 +51,15 @@ for epoch=1,opt.maxepoch do
 
    -- 1. training
    traincm:zero()
+   model:training()
    for i, input, target in trainset:sampleiter(opt.batchsize, opt.epochsize) do
       local output = model:forward(input)
-      criterion:forward(output, target)
-
       traincm:batchAdd(output, target)
 
+      criterion:forward(output, target)
       local gradOutput = criterion:backward(output, target)
       model:zeroGradParameters()
       model:backward(input, gradOutput)
-
       model:updateParameters(opt.lr)
    end
    traincm:updateValids()
@@ -70,6 +67,7 @@ for epoch=1,opt.maxepoch do
 
    -- 2. cross-validation
    validcm:zero()
+   model:evaluate()
    for i, input, target in validset:subiter(opt.batchsize) do
       local output = model:forward(input)
       validcm:batchAdd(output, target)
@@ -79,20 +77,9 @@ for epoch=1,opt.maxepoch do
 
    print(string.format("%d, %f, %f", epoch, opt.trainerr, opt.validerr))
 
-   -- 3. early-stopping
-   ntrial = ntrial + 1
-   if opt.validerr < minvaliderr then
-      -- save best version of model
-      minvaliderr = opt.validerr
-      model.opt = opt
-      model:clearState()
-      torch.save("mlp-mnist-earlystop.t7", model)
-      ntrial = 0
-   elseif ntrial >= opt.earlystop then
-      print("No new minima found after "..ntrial.." epochs.")
-      print("Lowest validation error: "..(minvaliderr*100).."%")
-      print("Stopping experiment.")
-      break
-   end
-
 end
+
+model:clearState()
+model.opt = opt
+torch.save("mlp-mnist-crossvalidate.t7", model)
+

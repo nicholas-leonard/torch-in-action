@@ -15,6 +15,7 @@ cmd:option('-hiddensize', '{200,200}', 'number of hidden units')
 cmd:option('-transfer', 'ReLU', 'non-linear transfer function')
 cmd:option('-maxepoch', 200, 'stop after this many epochs')
 cmd:option('-earlystop', 20, 'max #epochs to find a better minima for early-stopping')
+cmd:option('-weightdecay', 1e-5, 'weight decay regularization factor')
 local opt = cmd:parse(arg or {})
 
 -- process cmd-line options
@@ -62,6 +63,12 @@ for epoch=1,opt.maxepoch do
       local gradOutput = criterion:backward(output, target)
       model:zeroGradParameters()
       model:backward(input, gradOutput)
+
+      -- weight decay
+      local params, gradParams = model:parameters()
+      for i=1,#params do
+         gradParams[i]:add(opt.weightdecay, params[i])
+      end
 
       model:updateParameters(opt.lr)
    end
