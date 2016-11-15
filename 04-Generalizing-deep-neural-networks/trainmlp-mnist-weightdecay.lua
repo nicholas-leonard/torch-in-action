@@ -93,7 +93,7 @@ for epoch=1,opt.maxepoch do
       minvaliderr = opt.validerr
       model.opt = opt
       model:clearState()
-      torch.save("mlp-mnist-earlystop.t7", model)
+      torch.save("mlp-mnist-weightdecay.t7", model)
       ntrial = 0
    elseif ntrial >= opt.earlystop then
       print("No new minima found after "..ntrial.." epochs.")
