@@ -89,7 +89,7 @@ for epoch=1,opt.maxepoch do
       torch.save("mlp-mnist-earlystop.t7", model)
       ntrial = 0
    elseif ntrial >= opt.earlystop then
-      print("No new minima found after "..ntrial.." epochs.")
+      print("No new minima found after "..(epoch-ntrial).." epochs.")
       print("Lowest validation error: "..(minvaliderr*100).."%")
       print("Stopping experiment.")
       break

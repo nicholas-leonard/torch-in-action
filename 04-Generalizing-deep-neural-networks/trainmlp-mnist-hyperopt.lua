@@ -16,17 +16,19 @@ cmd:option('-transfer', 'ReLU', 'non-linear transfer function')
 cmd:option('-maxepoch', 200, 'stop after this many epochs')
 cmd:option('-earlystop', 20, 'max #epochs to find a better minima for early-stopping')
 cmd:option('-weightdecay', 1e-5, 'weight decay regularization factor')
-cmd:option('-savepath', paths.concat(dl.SAVE_PATH, 'mnist'), 'path to directory where to save xplog')
-cmd:option('-id', ('mnist' .. ':' .. dl.uniqueid()), 'id string of this experiment (defaults to a unique id)')
+cmd:option('-savepath', paths.concat(dl.SAVE_PATH, 'mnist'), 'path to directory where to save model and learning curves')
+cmd:option('-id', dl.uniqueid(), 'id string of this experiment (defaults to a unique id)')
 cmd:option('-progress', false, 'print progress bar')
 local opt = cmd:parse(arg or {})
 
--- process cmd-line options
-opt.hiddensize = loadstring(" return "..opt.hiddensize)()
-
 -- load training set
 local trainset, validset = dl.loadMNIST()
+
+-- process cmd-line options
+opt.hiddensize = loadstring(" return "..opt.hiddensize)()
 opt.epochsize = opt.epochsize > 0 and opt.epochsize or trainset:size()
+opt.version = 1
+opt.version = 2 -- uses dpnn's Module:weightdecay()
 
 -- define model and criterion
 local inputsize = 28*28
@@ -60,8 +62,7 @@ csvfile:write("Epoch,train error,valid error\n")
 
 -- optimize model using SGD
 for epoch=1,opt.maxepoch do
-   print("")
-   print("Epoch #"..epoch.." :")
+   print("\n"..opt.id.."; epoch #"..epoch.." :")
 
    -- 1. training
    local timer = torch.Timer()
@@ -76,11 +77,7 @@ for epoch=1,opt.maxepoch do
       model:zeroGradParameters()
       model:backward(input, gradOutput)
 
-      -- weight decay
-      local params, gradParams = model:parameters()
-      for i=1,#params do
-         gradParams[i]:add(opt.weightdecay, params[i])
-      end
+      model:weightDecay(opt.weightdecay) -- weight decay
 
       if opt.progress then
          xlua.progress(math.min(i, opt.epochsize), opt.epochsize)
@@ -110,7 +107,7 @@ for epoch=1,opt.maxepoch do
    -- 3. early-stopping
    ntrial = ntrial + 1
    if opt.validerr < minvaliderr then
-      -- save best version of model
+      print("Found new minimum after "..ntrial.." epochs")
       minvaliderr = opt.validerr
       model.opt = opt
       model:clearState()
@@ -118,7 +115,7 @@ for epoch=1,opt.maxepoch do
       torch.save(filename, model)
       ntrial = 0
    elseif ntrial >= opt.earlystop then
-      print("No new minima found after "..ntrial.." epochs.")
+      print("No new minima found after "..(epoch-ntrial).." epochs.")
       print("Lowest validation error: "..(minvaliderr*100).."%")
       print("Stopping experiment.")
       break

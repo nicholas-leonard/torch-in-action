@@ -49,4 +49,5 @@ assert(count == 50000)
 print(cm)
 print("Avg NLL:"..sumloss/count)
 
+model:clearState()
 torch.save("logreg-mnist.t7", model)
