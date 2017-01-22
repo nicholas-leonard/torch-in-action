@@ -1,20 +1,18 @@
--- hyper-parameters
-
-N = 4
-depth = 3
-height = 28
-width = 28
-savepath = "model.t7"
+-- Note for Mac OS X users:
+-- if you get a 'libjpeg' error try :
+-- $ brew install libjpec
+-- $ luarocks make image
 
 -- LISTING 1.1: Load image classification dataset into tensors
 
 require "paths"
 require "image"
+local N, depth, height, width = 4, 3, 28, 28
 local datapath = "facedetect/"
 local inputs = torch.DoubleTensor(N, depth, height, width):zero()
 local targets = torch.LongTensor(N):zero()
 local classes = {"face","background"}
-local n, classid = 0, 1
+local n = 0
 for classid=1,2 do
    local class = classes[classid]
    local classpath = paths.concat(datapath, class)
@@ -24,7 +22,6 @@ for classid=1,2 do
       image.scale(inputs[n], imagetensor)
       targets[n] = classid
    end
-   classid = classid + 1
 end
 assert(n == N, "Missing samples")
 
@@ -34,23 +31,23 @@ require 'nn'
 require 'dpnn'
 
 -- model is a convolutional neural network :
-module = nn.Sequential()
+model = nn.Sequential()
 -- 2 conv layers:
-module:add(nn.Convert())
-module:add(nn.SpatialConvolution(3, 16, 5, 5, 1, 1, 2, 2))
-module:add(nn.ReLU())
-module:add(nn.SpatialMaxPooling(2, 2, 2, 2))
-module:add(nn.SpatialConvolution(16, 32, 5, 5, 1, 1, 2, 2))
-module:add(nn.ReLU())
-module:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+model:add(nn.Convert())
+model:add(nn.SpatialConvolution(3, 16, 5, 5, 1, 1, 2, 2))
+model:add(nn.ReLU())
+model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
+model:add(nn.SpatialConvolution(16, 32, 5, 5, 1, 1, 2, 2))
+model:add(nn.ReLU())
+model:add(nn.SpatialMaxPooling(2, 2, 2, 2))
 -- 1 dense hidden layer:
-outsize = module:outside{1,depth,height,width} 
-module:add(nn.Collapse(3))
-module:add(nn.Linear(outsize[2]*outsize[3]*outsize[4], 200))
-module:add(nn.ReLU())
+outsize = model:outside{1,depth,height,width}
+model:add(nn.Collapse(3))
+model:add(nn.Linear(outsize[2]*outsize[3]*outsize[4], 200))
+model:add(nn.ReLU())
 -- output layer:
-module:add(nn.Linear(200, 10))
-module:add(nn.LogSoftMax())
+model:add(nn.Linear(200, 10))
+model:add(nn.LogSoftMax())
 
 -- loss function is negative log likelihood:
 criterion = nn.ClassNLLCriterion()
@@ -61,21 +58,21 @@ for epoch=1,100 do
    local sumloss = 0
    local N = inputs:size(1)
    for i=1,N do
-      -- 0. sample one input and target pair from dataset
+      -- 1. sample one input and target pair from dataset
       local idx = torch.random(1,N)
       local input = inputs[idx]
       local target = targets:narrow(1,idx,1)
-      -- 1. forward
-      local output = module:forward(input)
+      -- 2. forward
+      local output = model:forward(input)
       local loss = criterion:forward(output, target)
       sumloss = sumloss + loss
-      -- 2. backward
+      -- 3. backward
       local gradOutput = criterion:backward(output, target)
-      module:zeroGradParameters()
-      local gradInput = module:backward(input, gradOutput)
-      -- 3. Update
-     module:updateParameters(0.1) 
+      model:zeroGradParameters()
+      local gradInput = model:backward(input, gradOutput)
+      -- 4. Update
+     model:updateParameters(0.1)
    end
    print("Epoch #"..epoch..": mean training loss = "..sumloss/N)
 end
-torch.save(savepath, module)
+torch.save("facedetector.t7", model)
